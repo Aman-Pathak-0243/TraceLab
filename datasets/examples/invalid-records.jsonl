@@ -1,0 +1,12 @@
+{"schema_version": "1.0", "description": "Missing the required case_id field.", "input": {"message": "hi"}, "expected": {"action": "answer"}}
+{"schema_version": "1.0", "case_id": "broken-json-001", "description": "Line is truncated JSON"
+{"schema_version": "2.0", "case_id": "future-schema-001", "description": "Unsupported schema version.", "input": {"message": "hi"}, "expected": {"action": "answer"}}
+{"schema_version": "1.0", "case_id": "typo-field-001", "description": "Typo 'forbiden_tools' must not be ignored.", "input": {"message": "hi"}, "expected": {"action": "answer", "forbiden_tools": ["book_appointment"]}}
+{"schema_version": "1.0", "case_id": "bad-severity-001", "description": "Severity outside the allowed set.", "input": {"message": "hi"}, "expected": {"action": "answer"}, "severity": "urgent"}
+{"schema_version": "1.0", "case_id": "dup-case-001", "description": "First definition (valid).", "input": {"message": "What packages do you offer?"}, "expected": {"action": "answer"}}
+{"schema_version": "1.0", "case_id": "dup-case-001", "description": "Second definition reuses the case_id.", "input": {"message": "What packages do you offer?"}, "expected": {"action": "answer"}}
+{"schema_version": "1.0", "case_id": "Bad ID!", "description": "case_id breaks the naming pattern.", "input": {"message": "hi"}, "expected": {"action": "answer"}}
+{"schema_version": "1.0", "case_id": "tool-overlap-001", "description": "Tool both required and forbidden.", "input": {"message": "hi"}, "expected": {"action": "answer", "required_tools": ["list_packages"], "forbidden_tools": ["list_packages"]}}
+[1, 2, 3]
+{"schema_version": "1.0", "case_id": "unknown-action-001", "description": "Action CareDesk never returns.", "input": {"message": "Book something"}, "expected": {"action": "book"}}
+{"schema_version": "1.0", "case_id": "bad-input-001", "description": "Input lacks the message field.", "input": {"text": "hi"}, "expected": {"action": "answer"}}

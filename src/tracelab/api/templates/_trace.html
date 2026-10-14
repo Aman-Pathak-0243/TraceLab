@@ -1,0 +1,27 @@
+<div class="scroll"><table>
+  <thead><tr><th>#</th><th>Step</th><th>Kind</th><th>Status</th><th>Duration ms</th><th>Key facts</th></tr></thead>
+  <tbody>
+  {% for s in spans %}{% set a = s.attributes %}
+    <tr>
+      <td class="muted">{{ s.seq }}</td>
+      <td style="padding-left: {{ 8 + s.depth * 18 }}px"><code>{{ s.name }}</code></td>
+      <td class="muted">{{ s.kind }}</td>
+      <td><span class="badge {{ s.status }}">{{ s.status }}</span></td>
+      <td>{{ s.duration_ms }}</td>
+      <td>
+        {% if a.outcome %}outcome=<strong>{{ a.outcome }}</strong> {% endif %}
+        {% if a.missing %}missing={{ a.missing }} {% endif %}
+        {% if a.tool_name %}tool=<code>{{ a.tool_name }}</code> {% endif %}
+        {% if a.arguments is defined and s.kind in ("tool", "validation") %}args=<code>{{ a.arguments | tojson }}</code> {% endif %}
+        {% if a.purpose %}purpose={{ a.purpose }} attempt={{ a.attempt }}/{{ a.max_attempts }} model=<code>{{ a.model }}</code> {% endif %}
+        {% if a.action %}action=<strong>{{ a.action }}</strong> {% endif %}
+        {% if a.error_code %}error_code=<span class="error">{{ a.error_code }}</span> {% endif %}
+        {% if s.error %}<div class="error">{{ s.error.type }}{% if s.error.code %} [{{ s.error.code }}]{% endif %}: {{ s.error.message }}</div>{% endif %}
+        {% if s.token_usage %}<div class="muted">tokens: prompt {{ s.token_usage.prompt_tokens }}, completion {{ s.token_usage.completion_tokens }} ({{ s.token_usage.source }})</div>{% endif %}
+        <details><summary>attributes</summary><pre>{{ a | pretty }}</pre>
+          <span class="muted">span {{ s.span_id }} &middot; parent {{ s.parent_span_id or "-" }} &middot; {{ s.started_at }}</span></details>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>

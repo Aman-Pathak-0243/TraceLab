@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ run.run_id }} - TraceLab{% endblock %}
+{% block content %}
+{% set s = run.summary %}
+<h1>Run {{ run.run_id }} <span class="badge {{ run.status }}">{{ run.status }}</span></h1>
+<p class="muted">
+  config <strong>{{ run.config_name }}</strong> &middot; {{ run.target.provider }} / {{ run.target.model }}
+  &middot; prompt {{ run.target.prompt_version }} &middot; dataset {{ dataset_name }}
+  (<code>{{ run.dataset_sha256[:12] }}</code>) &middot; started {{ run.created_at[:19] }} UTC
+</p>
+{% if run.target.inject_fault %}
+  <div class="notice"><span class="fault">Controlled fault injected: {{ run.target.inject_fault }}</span>.
+  This run deliberately simulates a defective build.</div>
+{% endif %}
+{% if run.error %}<div class="notice">Run error: <code>{{ run.error }}</code></div>{% endif %}
+
+{% if s %}
+<div class="cards">
+  <div class="card"><div class="n">{{ s.total }}</div><div class="l">cases</div></div>
+  <div class="card"><div class="n passed">{{ s.passed }}</div><div class="l">passed</div></div>
+  <div class="card"><div class="n failed">{{ s.failed }}</div><div class="l">failed</div></div>
+  <div class="card"><div class="n error">{{ s.error }}</div><div class="l">harness errors</div></div>
+  <div class="card"><div class="n skipped">{{ s.skipped }}</div><div class="l">skipped</div></div>
+</div>
+<div class="grid2">
+  <div>
+    <h2>Deterministic checks by evaluator</h2>
+    <table><thead><tr><th>Evaluator</th><th>Passed</th><th>Failed</th></tr></thead><tbody>
+    {% for name, e in s.by_evaluator | dictsort %}
+      <tr><td><code>{{ name }}</code></td><td class="passed">{{ e.passed }}</td><td class="{{ 'failed' if e.failed else 'muted' }}">{{ e.failed }}</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  <div>
+    <h2>Judge (reported separately; never affects pass/fail)</h2>
+    {% if s.judge.enabled %}
+      <p>{{ s.judge.cases_scored }} case(s) scored &middot; mean
+        {{ s.judge.mean_score if s.judge.mean_score is not none else "n/a" }} / {{ s.judge.scale_max }}
+        &middot; {{ s.judge.below_threshold }} below threshold &middot; {{ s.judge.no_verdict }} without verdict</p>
+      {% if s.judge.simulated %}<p class="warn">Simulated mock judge: fixed placeholder scores, not a quality signal.</p>{% endif %}
+    {% else %}<p class="muted">Judge disabled for this run.</p>{% endif %}
+    <h2>Latency and tokens</h2>
+    <p>Latency (ms): mean {{ s.latency_ms.mean }}, p50 {{ s.latency_ms.p50 }}, max {{ s.latency_ms.max }}
+       <span class="muted">over {{ s.latency_ms.count }} executed cases</span></p>
+    {% if s.token_usage.model_calls_with_usage %}
+      <p>Tokens (provider-reported, {{ s.token_usage.model_calls_with_usage }}/{{ s.token_usage.model_calls }} model calls):
+         prompt {{ s.token_usage.prompt_tokens }}, completion {{ s.token_usage.completion_tokens }}</p>
+    {% else %}
+      <p class="muted">Token usage not reported by the provider (0 of {{ s.token_usage.model_calls }} model calls).</p>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+  <div class="notice">This run has no summary (status: {{ run.status }}). Cases recorded so far are listed below.</div>
+{% endif %}
+
+<h2>Cases</h2>
+<p>
+  Filter:
+  <a href="/runs/{{ run.run_id }}">all</a> &middot;
+  <a href="/runs/{{ run.run_id }}?status=failing">failing</a> &middot;
+  <a href="/runs/{{ run.run_id }}?status=passed">passed</a> &middot;
+  <a href="/runs/{{ run.run_id }}?status=skipped">skipped</a>
+  {% if status_filter %}<span class="muted">(showing: {{ status_filter }})</span>{% endif %}
+</p>
+{% if not cases %}<p class="muted">No cases match this filter.</p>{% else %}
+<div class="scroll"><table>
+  <thead><tr><th>Status</th><th>Case</th><th>Severity</th><th>Tags</th><th>Failed checks / note</th><th>Latency ms</th><th>Judge</th></tr></thead>
+  <tbody>
+  {% for c in cases %}
+    {% set failed = c.evaluations | selectattr("kind", "equalto", "deterministic") | selectattr("passed", "sameas", false) | map(attribute="evaluator_id") | list %}
+    {% set judge = c.evaluations | selectattr("kind", "equalto", "judge") | list %}
+    <tr>
+      <td><span class="badge {{ c.status }}">{{ c.status }}</span></td>
+      <td><a href="/runs/{{ run.run_id }}/cases/{{ c.case_id }}">{{ c.case_id }}</a><br><span class="muted">{{ c.description }}</span></td>
+      <td>{{ c.severity }}</td>
+      <td class="muted">{{ c.tags | join(", ") }}</td>
+      <td>{% if failed %}<span class="failed">{{ failed | join(", ") }}</span>{% endif %}
+          {% if c.skip_reason %}<span class="muted">{{ c.skip_reason }}</span>{% endif %}
+          {% if c.harness_error %}<span class="error">{{ c.harness_error }}</span>{% endif %}</td>
+      <td>{{ c.latency_ms if c.latency_ms is not none else "" }}</td>
+      <td>{% if judge %}{% if judge[0].score is not none %}{{ judge[0].score | int }}/{{ judge[0].max_score | int }}{% else %}<span class="warn">no verdict</span>{% endif %}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+<details><summary>Full run configuration (as stored with the run)</summary><pre>{{ run.config | pretty }}</pre></details>
+{% endblock %}

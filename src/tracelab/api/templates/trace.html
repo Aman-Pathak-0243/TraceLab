@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ trace.trace_id }} - TraceLab{% endblock %}
+{% block content %}
+<h1>Trace {{ trace.trace_id }}</h1>
+<p class="muted">source {{ trace.source }} &middot; created {{ trace.created_at[:19] }} UTC
+  {% if trace.run_id %}&middot; <a href="/runs/{{ trace.run_id }}/cases/{{ trace.case_id }}">case {{ trace.case_id }} in {{ trace.run_id }}</a>{% endif %}</p>
+{% if trace.error %}<div class="notice error">Error: {{ trace.error }}</div>{% endif %}
+<div class="grid2">
+  <div><h2>Input</h2><pre>{{ trace.input | pretty }}</pre></div>
+  <div><h2>Output</h2><pre>{{ trace.output | pretty }}</pre></div>
+</div>
+<h2>Steps</h2>
+{% include "_trace.html" %}
+{% endblock %}

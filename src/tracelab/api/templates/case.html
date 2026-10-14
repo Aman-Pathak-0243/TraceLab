@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ case.case_id }} - TraceLab{% endblock %}
+{% block content %}
+<p><a href="/runs/{{ run.run_id }}">&larr; run {{ run.run_id }}</a></p>
+<h1>{{ case.case_id }} <span class="badge {{ case.status }}">{{ case.status }}</span></h1>
+<p>{{ case.description }} <span class="muted">&middot; severity {{ case.severity }} &middot; tags {{ case.tags | join(", ") }}</span></p>
+{% if run.target.inject_fault %}<div class="notice"><span class="fault">Run used controlled fault: {{ run.target.inject_fault }}</span></div>{% endif %}
+{% if case.skip_reason %}<div class="notice">Skipped: {{ case.skip_reason }}</div>{% endif %}
+{% if case.harness_error %}<div class="notice error">Harness error: {{ case.harness_error }}</div>{% endif %}
+
+<h2>Deterministic evaluation</h2>
+{% set det = case.evaluations | selectattr("kind", "equalto", "deterministic") | list %}
+{% if det %}
+<table><thead><tr><th>Result</th><th>Evaluator</th><th>Explanation</th></tr></thead><tbody>
+{% for e in det %}
+  <tr><td><span class="badge {{ 'passed' if e.passed else 'failed' }}">{{ 'pass' if e.passed else 'fail' }}</span></td>
+      <td><code>{{ e.evaluator_id }}</code></td><td>{{ e.explanation }}</td></tr>
+{% endfor %}
+</tbody></table>
+{% else %}<p class="muted">No deterministic results (case was skipped).</p>{% endif %}
+
+{% set jd = case.evaluations | selectattr("kind", "equalto", "judge") | list %}
+{% if jd %}
+<h2>LLM judge (advisory; does not change the case status)</h2>
+{% for e in jd %}
+  <p>{% if e.score is not none %}<strong>{{ e.score | int }}/{{ e.max_score | int }}</strong>{% else %}<span class="warn">no verdict</span>{% endif %}
+     &middot; {{ e.explanation }}</p>
+  <p class="muted">judge {{ e.details.judge_provider }} / {{ e.details.judge_model }}{% if e.details.simulated %} &middot; <span class="warn">simulated</span>{% endif %}
+     &middot; rubric: {{ e.details.rubric }}</p>
+{% endfor %}
+{% endif %}
+
+<div class="grid2">
+  <div><h2>Input</h2><pre>{{ case.input | pretty }}</pre><h2>Expected</h2><pre>{{ case.expected | pretty }}</pre></div>
+  <div><h2>Actual output</h2><pre>{{ case.output | pretty }}</pre></div>
+</div>
+
+<h2>Execution trace {% if trace %}<span class="muted"><code>{{ trace.trace_id }}</code></span>{% endif %}</h2>
+{% if trace %}{% include "_trace.html" %}{% else %}<p class="muted">No trace recorded for this case.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,11 @@
+{
+  "name": "baseline",
+  "description": "Deterministic mock model, prompt v1, simulated judge. Runs offline; used by CI.",
+  "target": "caredesk",
+  "dataset": "datasets/caredesk-v1.jsonl",
+  "adapter": {"provider": "mock", "model": "caredesk-mock-v1", "timeout_s": 0.25},
+  "agent": {"prompt_version": "v1", "max_model_attempts": 2},
+  "judge": {"enabled": true, "adapter": {"provider": "mock", "model": "mock-judge", "timeout_s": 5}},
+  "concurrency": 4,
+  "case_timeout_s": 30
+}

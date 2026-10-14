@@ -1,0 +1,11 @@
+{
+  "name": "ollama",
+  "description": "Local Ollama model for the app and the judge (model from TRACELAB_OLLAMA_MODEL, default llama3). Needs `ollama serve` and a model you pulled yourself.",
+  "target": "caredesk",
+  "dataset": "datasets/caredesk-v1.jsonl",
+  "adapter": {"provider": "ollama", "timeout_s": 120},
+  "agent": {"prompt_version": "v2", "max_model_attempts": 2},
+  "judge": {"enabled": true, "adapter": {"provider": "ollama", "timeout_s": 120}},
+  "concurrency": 2,
+  "case_timeout_s": 600
+}

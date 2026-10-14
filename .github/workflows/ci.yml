@@ -1,0 +1,48 @@
+name: CI
+
+# Core checks only. Nothing here needs Ollama, a model download, network
+# inference or an API key: the evaluation suite runs against the mock model.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+
+      - name: Install (versions pinned by requirements-lock.txt)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -c requirements-lock.txt -e ".[dev]"
+
+      - name: Lint and format check
+        run: |
+          ruff check src tests
+          ruff format --check src tests
+
+      - name: Validate evaluation dataset
+        run: tracelab validate
+
+      - name: Unit, integration and regression tests
+        run: pytest
+
+      - name: Evaluation suite against the mock model (fails on any failed case)
+        run: tracelab --db "$RUNNER_TEMP/ci.db" run
+
+      - name: Regression workflow (baseline -> injected bug -> fix)
+        run: tracelab --db "$RUNNER_TEMP/ci.db" demo-regression
+
+      - name: Private docs/ directory is git-ignored
+        run: git check-ignore -q docs/interview.md

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Evaluation runs</h1>
+{% if not runs %}
+  <div class="notice">
+    No runs recorded yet. Start one with <code>tracelab run</code>, <code>tracelab demo-regression</code>,
+    or <code>POST /api/runs</code>. This page only shows data stored in the TraceLab database.
+  </div>
+{% else %}
+  <form class="inline" action="/compare" method="get">
+    <span class="muted">Compare</span>
+    <select name="base" aria-label="base run">
+      {% for r in runs %}<option value="{{ r.run_id }}" {% if loop.index == 2 %}selected{% endif %}>{{ r.run_id }} ({{ r.config_name }}{% if r.target.inject_fault %}, fault{% endif %})</option>{% endfor %}
+    </select>
+    <span class="muted">&rarr;</span>
+    <select name="head" aria-label="head run">
+      {% for r in runs %}<option value="{{ r.run_id }}">{{ r.run_id }} ({{ r.config_name }}{% if r.target.inject_fault %}, fault{% endif %})</option>{% endfor %}
+    </select>
+    <button type="submit">Compare</button>
+  </form>
+  <div class="scroll"><table>
+    <thead><tr>
+      <th>Run</th><th>Created (UTC)</th><th>Config</th><th>Provider / model</th><th>Prompt</th>
+      <th>Injected fault</th><th>Dataset</th><th>Status</th><th>Pass</th><th>Fail</th><th>Error</th><th>Skip</th><th>Judge mean</th>
+    </tr></thead>
+    <tbody>
+    {% for r in runs %}{% set s = r.summary %}
+      <tr>
+        <td><a href="/runs/{{ r.run_id }}">{{ r.run_id }}</a></td>
+        <td class="muted">{{ r.created_at[:19] }}</td>
+        <td>{{ r.config_name }}</td>
+        <td>{{ r.target.provider }} / {{ r.target.model }}</td>
+        <td>{{ r.target.prompt_version }}</td>
+        <td>{% if r.target.inject_fault %}<span class="fault">{{ r.target.inject_fault }}</span>{% else %}<span class="muted">-</span>{% endif %}</td>
+        <td class="muted"><code>{{ r.dataset_sha256[:10] }}</code></td>
+        <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
+        {% if s %}
+        <td class="passed">{{ s.passed }}</td>
+        <td class="failed">{{ s.failed }}</td>
+        <td class="error">{{ s.error }}</td>
+        <td class="skipped">{{ s.skipped }}</td>
+        <td>{% if s.judge.mean_score is not none %}{{ s.judge.mean_score }}{% if s.judge.simulated %} <span class="muted">(simulated)</span>{% endif %}{% else %}<span class="muted">n/a</span>{% endif %}</td>
+        {% else %}
+        <td colspan="5" class="muted">no summary</td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+{% endif %}
+
+<h2>Recent ad-hoc requests</h2>
+{% if not traces %}
+  <p class="muted">None yet. Send one with <code>tracelab ask "..."</code> or <code>POST /api/caredesk/ask</code>.</p>
+{% else %}
+  <table>
+    <thead><tr><th>Trace</th><th>Source</th><th>Created (UTC)</th><th>Action</th></tr></thead>
+    <tbody>
+    {% for t in traces %}
+      <tr><td><a href="/traces/{{ t.trace_id }}">{{ t.trace_id }}</a></td><td>{{ t.source }}</td>
+          <td class="muted">{{ t.created_at[:19] }}</td><td>{{ t.output.action if t.output else "no output" }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

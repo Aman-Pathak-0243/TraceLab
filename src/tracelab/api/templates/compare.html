@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Compare runs - TraceLab{% endblock %}
+{% block content %}
+<h1>Compare runs</h1>
+{% if not runs %}
+  <div class="notice">No runs to compare yet.</div>
+{% else %}
+<form class="inline" method="get">
+  <select name="base" aria-label="base run">{% for r in runs %}<option value="{{ r.run_id }}" {% if r.run_id == base %}selected{% endif %}>{{ r.run_id }} ({{ r.config_name }}{% if r.target.inject_fault %}, fault{% endif %})</option>{% endfor %}</select>
+  <span class="muted">&rarr;</span>
+  <select name="head" aria-label="head run">{% for r in runs %}<option value="{{ r.run_id }}" {% if r.run_id == head %}selected{% endif %}>{{ r.run_id }} ({{ r.config_name }}{% if r.target.inject_fault %}, fault{% endif %})</option>{% endfor %}</select>
+  <button type="submit">Compare</button>
+</form>
+{% endif %}
+
+{% if comparison %}
+{% set m = comparison.metrics %}
+<p>Base <a href="/runs/{{ comparison.base_run.run_id }}">{{ comparison.base_run.run_id }}</a> &rarr;
+   head <a href="/runs/{{ comparison.head_run.run_id }}">{{ comparison.head_run.run_id }}</a></p>
+{% if comparison.has_regressions %}
+  <div class="notice failed"><strong>{{ groups.newly_failed | length }} regression(s):</strong> cases that passed in the base run fail in the head run.</div>
+{% endif %}
+{% for warning in comparison.warnings %}<div class="notice warn">Warning: {{ warning }}</div>{% endfor %}
+{% if comparison.gate_passed %}
+  <div class="notice passed"><strong>Regression gate passed:</strong> the head run completed, nothing that passed in the base run fails, and every previously passing case was executed.</div>
+{% else %}
+  <div class="notice failed"><strong>Regression gate failed.</strong>{% if comparison.lost_coverage %} Passed in base but not executed in head: {{ comparison.lost_coverage | map(attribute="case_id") | join(", ") }}.{% endif %}</div>
+{% endif %}
+
+<h2>Configuration changes</h2>
+{% if comparison.config_changes %}
+<table><thead><tr><th>Key</th><th>Base</th><th>Head</th></tr></thead><tbody>
+{% for c in comparison.config_changes %}<tr><td><code>{{ c.key }}</code></td><td>{{ c.base }}</td><td>{{ c.head }}</td></tr>{% endfor %}
+</tbody></table>
+{% else %}<p class="muted">Identical configuration.</p>{% endif %}
+
+<h2>Metrics (absolute values per run, then difference)</h2>
+<table><thead><tr><th>Metric</th><th>Base</th><th>Head</th><th>Delta</th></tr></thead><tbody>
+{% for key in ["passed", "failed", "error", "skipped"] %}
+  <tr><td>{{ key }} cases</td><td>{{ m.status_counts.base[key] }}</td><td>{{ m.status_counts.head[key] }}</td><td>{{ m.status_counts.head[key] - m.status_counts.base[key] }}</td></tr>
+{% endfor %}
+  {% set l = m.latency_ms_mean_shared_cases %}
+  <tr><td>mean latency ms ({{ l.cases }} shared cases)</td><td>{{ l.base if l.base is not none else "n/a" }}</td><td>{{ l.head if l.head is not none else "n/a" }}</td><td>{{ l.delta if l.delta is not none else "n/a" }}</td></tr>
+  {% set j = m.judge_mean_score_shared_cases %}
+  <tr><td>mean judge score ({{ j.cases }} shared cases)</td><td>{{ j.base if j.base is not none else "n/a" }}</td><td>{{ j.head if j.head is not none else "n/a" }}</td><td>{{ j.delta if j.delta is not none else "n/a" }}</td></tr>
+  <tr><td>token usage</td><td colspan="3">{% if m.token_usage.available %}completion tokens: base {{ m.token_usage.base.completion_tokens }}, head {{ m.token_usage.head.completion_tokens }}{% else %}<span class="muted">unavailable: not reported by the provider in both runs</span>{% endif %}</td></tr>
+</tbody></table>
+
+{% set titles = {"newly_failed": "Newly failed (regressions)", "newly_passed": "Newly passed (fixed)", "still_failing": "Still failing", "passed_both": "Passed in both", "skipped": "Skipped in either run", "only_in_base": "Only in base run", "only_in_head": "Only in head run"} %}
+{% for key in ["newly_failed", "newly_passed", "still_failing", "passed_both", "skipped", "only_in_base", "only_in_head"] %}
+  <h2>{{ titles[key] }} ({{ groups[key] | length }})</h2>
+  {% if groups[key] %}
+  <div class="scroll"><table><thead><tr><th>Case</th><th>Severity</th><th>Base</th><th>Head</th><th>Evaluator changes</th><th>Judge delta</th></tr></thead><tbody>
+  {% for c in groups[key] %}
+    {% set link_run = comparison.head_run.run_id if c.head_status else comparison.base_run.run_id %}
+    <tr>
+      <td><a href="/runs/{{ link_run }}/cases/{{ c.case_id }}">{{ c.case_id }}</a></td>
+      <td>{{ c.severity }}</td>
+      <td>{% if c.base_status %}<span class="badge {{ c.base_status }}">{{ c.base_status }}</span>{% endif %}</td>
+      <td>{% if c.head_status %}<span class="badge {{ c.head_status }}">{{ c.head_status }}</span>{% endif %}</td>
+      <td>{% for e in c.evaluator_changes %}<code>{{ e.evaluator_id }}</code>: {{ e.base }} &rarr; {{ e.head }}<br>{% endfor %}</td>
+      <td>{{ c.judge_delta if c.judge_delta is not none else "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% endif %}
+{% endfor %}
+{% endif %}
+{% endblock %}

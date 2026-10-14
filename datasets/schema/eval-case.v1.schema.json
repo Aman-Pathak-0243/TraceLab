@@ -1,0 +1,249 @@
+{
+  "$defs": {
+    "Expected": {
+      "additionalProperties": false,
+      "description": "Expected behaviour. Each populated field enables one deterministic check.",
+      "properties": {
+        "action": {
+          "minLength": 1,
+          "title": "Action",
+          "type": "string"
+        },
+        "answer_contains": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Answer Contains",
+          "type": "array"
+        },
+        "answer_not_contains": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Answer Not Contains",
+          "type": "array"
+        },
+        "business_rules": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Business Rules",
+          "type": "array"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
+        },
+        "fields": {
+          "additionalProperties": true,
+          "title": "Fields",
+          "type": "object"
+        },
+        "forbidden_tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Tools",
+          "type": "array"
+        },
+        "missing_fields": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing Fields"
+        },
+        "required_tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Tools",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "Expected",
+      "type": "object"
+    },
+    "JudgeSpec": {
+      "additionalProperties": false,
+      "description": "Rubric for the optional LLM-as-judge evaluator (integer scale 1-5).",
+      "properties": {
+        "min_score": {
+          "default": 3,
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Min Score",
+          "type": "integer"
+        },
+        "rubric": {
+          "minLength": 10,
+          "title": "Rubric",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rubric"
+      ],
+      "title": "JudgeSpec",
+      "type": "object"
+    },
+    "Simulation": {
+      "additionalProperties": false,
+      "description": "Controlled failure injection for a case.\n\n`model_fault` is only honoured by the mock adapter; cases that use it are\nskipped (not passed) when a real model is configured.",
+      "properties": {
+        "model_fault": {
+          "anyOf": [
+            {
+              "enum": [
+                "malformed_json",
+                "fenced_json",
+                "wrong_schema",
+                "hallucinated_tool",
+                "empty_response",
+                "timeout",
+                "timeout_once",
+                "unavailable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Fault"
+        },
+        "tool_fault": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolFault"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Simulation",
+      "type": "object"
+    },
+    "ToolFault": {
+      "additionalProperties": false,
+      "description": "Make a named tool fail. Works with every model adapter (tools are local).",
+      "properties": {
+        "kind": {
+          "default": "unavailable",
+          "enum": [
+            "unavailable",
+            "internal_error"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool"
+      ],
+      "title": "ToolFault",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "case_id": {
+      "pattern": "^[a-z0-9][a-z0-9-]{2,63}$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "description": {
+      "minLength": 5,
+      "title": "Description",
+      "type": "string"
+    },
+    "expected": {
+      "$ref": "#/$defs/Expected"
+    },
+    "input": {
+      "additionalProperties": true,
+      "title": "Input",
+      "type": "object"
+    },
+    "judge": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/JudgeSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "severity": {
+      "default": "medium",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "simulate": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Simulation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "case_id",
+    "description",
+    "input",
+    "expected"
+  ],
+  "title": "EvalCase",
+  "type": "object"
+}
